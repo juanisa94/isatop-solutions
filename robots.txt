@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.isatoposolutions.com/sitemap.xml
+Sitemap: https://juanisa94.github.io/isatop-solutions/sitemap.xml

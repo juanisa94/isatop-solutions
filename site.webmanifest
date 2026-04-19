@@ -2,13 +2,13 @@
   "name": "IsaTop Solutions",
   "short_name": "IsaTop",
   "description": "Consultoria topografica de alta precision para catastro, obra civil y fotogrametria con drones.",
-  "start_url": "/",
+  "start_url": "/isatop-solutions/",
   "display": "standalone",
   "background_color": "#f6f2ee",
   "theme_color": "#1d2331",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "/isatop-solutions/favicon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
