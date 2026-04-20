@@ -722,13 +722,36 @@
             Cerrar
           </button>
         </div>
-        <iframe
-          id="isa-chat-iframe"
-          src="https://isa-topo-flow.base44.app"
-          title="Chat de Isa Topo"
-          allow="microphone"
-          loading="lazy"
-        ></iframe>
+        <div class="chat-agent" id="isa-chat-agent">
+          <div class="chat-messages" id="isa-chat-messages" aria-live="polite">
+            <article class="chat-message chat-message-agent">
+              <p>
+                Hola, soy Isa. Estoy aqui para entender tu proyecto, orientarte
+                con criterio tecnico y dejar la consulta registrada para revision
+                en oficina. Empezamos por lo basico: cual es tu nombre?
+              </p>
+            </article>
+          </div>
+
+          <div class="chat-summary" id="isa-chat-summary" hidden>
+            <p class="chat-summary-title">Datos recogidos</p>
+            <ul id="isa-chat-summary-list"></ul>
+          </div>
+
+          <form class="chat-input-form" id="isa-chat-form">
+            <label class="sr-only" for="isa-chat-input">Escribe tu respuesta</label>
+            <input
+              id="isa-chat-input"
+              name="isa-chat-input"
+              type="text"
+              autocomplete="off"
+              placeholder="Escribe tu respuesta"
+            />
+            <button class="button button-primary chat-send" id="isa-chat-send" type="submit">
+              Enviar
+            </button>
+          </form>
+        </div>
       </section>
     </div>
 
