@@ -398,63 +398,171 @@
 
         <section class="section consultation" id="consulta">
           <div class="section-heading">
-            <p class="eyebrow">Consulta tecnica guiada</p>
-            <h2>Empezamos con los datos que realmente importan</h2>
+            <p class="eyebrow">Captacion de consultas</p>
+            <h2>Recogemos la informacion clave para revisarla despues en oficina</h2>
             <p class="section-text">
-              Esta simulacion reproduce el comportamiento del agente: recoge la
-              informacion necesaria para entender el proyecto y orientar la
-              tecnica adecuada.
+              Esta seccion ya queda preparada para registrar oportunidades reales.
+              El agente puede usar estos mismos campos para conversar, vender el
+              servicio con criterio tecnico y guardar cada consulta en Google Sheets.
             </p>
           </div>
 
-          <div class="consultation-panel">
-            <div class="progress-bar" aria-hidden="true">
-              <span id="progress-fill"></span>
-            </div>
-
-            <div class="question-box">
-              <p class="question-label">Paso <span id="step-index">1</span> de 4</p>
-              <h3 id="question-title">
-                Que tipo de proyecto necesitas realizar?
-              </h3>
-              <p id="question-help">
-                Puedes seleccionar una de las opciones para orientar la tecnica
-                de trabajo.
+          <div class="consultation-panel lead-panel">
+            <div class="lead-panel-copy">
+              <p class="question-label">Asistente comercial-tecnico</p>
+              <h3>Datos minimos para estudiar el trabajo con criterio profesional</h3>
+              <p id="lead-intro">
+                El objetivo no es dar un precio improvisado, sino dejar una base
+                clara para evaluar el proyecto, priorizar el lead y continuar el
+                contacto comercial con informacion util.
               </p>
+              <ul class="lead-points">
+                <li>Recoge la fecha exacta de la consulta automaticamente.</li>
+                <li>Pide los datos de contacto y el tipo de encargo.</li>
+                <li>Registra ubicacion, extension, plazos y documentacion disponible.</li>
+                <li>Deja observaciones libres para necesidades especiales del cliente.</li>
+              </ul>
+              <div class="lead-agent-card">
+                <p class="eyebrow">Guia de comportamiento del agente</p>
+                <p id="agent-guidance">
+                  Isa debe hablar con cercania, seguridad y autoridad tecnica.
+                  Puede recomendar el siguiente paso mas adecuado, explicar el
+                  valor del levantamiento topografico o de la captura con drones y
+                  ayudar a cerrar la toma de datos, pero sin dar precio final ni
+                  asesoramiento legal sobre linderos o propiedad.
+                </p>
+              </div>
             </div>
 
-            <div class="options-grid" id="options-grid"></div>
+            <form class="lead-form" id="lead-form">
+              <div class="lead-form-grid">
+                <label class="field">
+                  <span>Nombre del cliente</span>
+                  <input
+                    id="lead-name"
+                    name="nombre"
+                    type="text"
+                    autocomplete="name"
+                    placeholder="Nombre y apellidos"
+                    required
+                  />
+                </label>
 
-            <form class="answer-form" id="custom-answer-form">
-              <label for="custom-answer" id="custom-answer-label"
-                >Respuesta tecnica</label
-              >
-              <input
-                id="custom-answer"
-                name="custom-answer"
-                type="text"
-                autocomplete="off"
-                placeholder="Escribe aqui tu respuesta"
-              />
-              <button class="button button-primary" type="submit">
-                Guardar y continuar
-              </button>
+                <label class="field">
+                  <span>Telefono</span>
+                  <input
+                    id="lead-phone"
+                    name="telefono"
+                    type="tel"
+                    autocomplete="tel"
+                    placeholder="+34 600 000 000"
+                    required
+                  />
+                </label>
+
+                <label class="field">
+                  <span>Email</span>
+                  <input
+                    id="lead-email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="cliente@correo.com"
+                    required
+                  />
+                </label>
+
+                <label class="field">
+                  <span>Tipo de proyecto</span>
+                  <select id="lead-project-type" name="tipoProyecto" required>
+                    <option value="">Selecciona una opcion</option>
+                    <option value="Catastro">Catastro</option>
+                    <option value="Obra civil">Obra civil</option>
+                    <option value="Agricultura de precision">Agricultura de precision</option>
+                    <option value="Levantamiento topografico">Levantamiento topografico</option>
+                    <option value="Fotogrametria con drones">Fotogrametria con drones</option>
+                    <option value="Escaneo laser 3D">Escaneo laser 3D</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </label>
+
+                <label class="field field-full">
+                  <span>Ubicacion</span>
+                  <input
+                    id="lead-location"
+                    name="ubicacion"
+                    type="text"
+                    autocomplete="address-line1"
+                    placeholder="Direccion, municipio, poligono, parcela o coordenadas"
+                    required
+                  />
+                </label>
+
+                <label class="field">
+                  <span>Extension</span>
+                  <input
+                    id="lead-area"
+                    name="extension"
+                    type="text"
+                    placeholder="Ejemplo: 2,4 ha o 8.500 m2"
+                    required
+                  />
+                </label>
+
+                <label class="field">
+                  <span>Plazo y fechas</span>
+                  <input
+                    id="lead-deadline"
+                    name="plazoFechas"
+                    type="text"
+                    placeholder="Ejemplo: antes del 15 de mayo"
+                    required
+                  />
+                </label>
+
+                <label class="field field-full">
+                  <span>Documentacion de las tierras</span>
+                  <textarea
+                    id="lead-docs"
+                    name="documentacion"
+                    rows="4"
+                    placeholder="Escrituras, referencia catastral, planos, GML, levantamientos previos u otra documentacion disponible"
+                  ></textarea>
+                </label>
+
+                <label class="field field-full">
+                  <span>Si quiere especificar algo</span>
+                  <textarea
+                    id="lead-notes"
+                    name="observaciones"
+                    rows="5"
+                    placeholder="Necesidades especiales, dudas, acceso a la finca, urgencia comercial o cualquier detalle que debamos revisar"
+                  ></textarea>
+                </label>
+              </div>
+
+              <div class="lead-form-actions">
+                <button class="button button-primary" type="submit" id="lead-submit">
+                  Enviar consulta
+                </button>
+                <button class="button button-secondary" type="reset" id="lead-reset">
+                  Limpiar datos
+                </button>
+              </div>
+
+              <p class="summary-note lead-note">
+                La fecha de consulta se registra automaticamente al enviar. El
+                endpoint de Google Sheets se configura en `script.js`.
+              </p>
+
+              <div class="summary-box lead-status-box" id="lead-status" hidden>
+                <p class="eyebrow">Consulta registrada</p>
+                <h3 id="lead-status-title">Datos preparados correctamente</h3>
+                <p id="lead-status-message">
+                  La informacion de esta consulta ha quedado lista para su revision.
+                </p>
+              </div>
             </form>
-
-            <div class="summary-box" id="summary-box" hidden>
-              <p class="eyebrow">Resumen preliminar</p>
-              <h3>Informacion recogida</h3>
-              <ul id="summary-list"></ul>
-              <p id="recommendation-text"></p>
-              <p class="summary-note">
-                La propuesta economica final se preparara una vez validados todos
-                los datos tecnicos. No se ofrece asesoramiento legal sobre
-                linderos.
-              </p>
-              <button class="button button-secondary" id="restart-button" type="button">
-                Reiniciar consulta
-              </button>
-            </div>
           </div>
         </section>
 

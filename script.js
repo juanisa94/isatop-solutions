@@ -1,165 +1,113 @@
-const steps = [
-  {
-    title: "Que tipo de proyecto necesitas realizar?",
-    help: "Selecciona la tipologia que mas se acerque para orientar la metodologia de trabajo.",
-    summaryLabel: "Tipo de proyecto",
-    inputLabel: "Proyecto",
-    placeholder: "Describe el tipo de proyecto",
-    options: [
-      "Catastro",
-      "Obra civil",
-      "Agricultura de precision",
-      "Fotogrametria con drones",
-      "Escaneo laser 3D",
-      "Otro proyecto tecnico"
-    ]
-  },
-  {
-    title: "Cual es la ubicacion del terreno o de la actuacion?",
-    help: "Puedes indicar direccion, municipio, referencia geografica o coordenadas si las conoces.",
-    summaryLabel: "Ubicacion",
-    inputLabel: "Ubicacion o coordenadas",
-    placeholder: "Ejemplo: Poligono 3, parcela 41, Jaen"
-  },
-  {
-    title: "Que superficie aproximada tiene la zona de trabajo?",
-    help: "Indica la extension en hectareas o metros cuadrados para dimensionar la captura de datos.",
-    summaryLabel: "Superficie",
-    inputLabel: "Superficie aproximada",
-    placeholder: "Ejemplo: 12.500 m2 o 3,2 ha"
-  },
-  {
-    title: "Que nivel de detalle necesitas?",
-    help: "Senala si requieres curvas de nivel, MDT, MDE, nube de puntos, ortofoto u otro entregable.",
-    summaryLabel: "Nivel de detalle",
-    inputLabel: "Entregables requeridos",
-    placeholder: "Ejemplo: curvas de nivel cada 0,5 m y MDT"
-  }
-];
+const GOOGLE_SHEETS_ENDPOINT = "";
 
-const questionTitle = document.getElementById("question-title");
-const questionHelp = document.getElementById("question-help");
-const optionsGrid = document.getElementById("options-grid");
-const customAnswerForm = document.getElementById("custom-answer-form");
-const customAnswerInput = document.getElementById("custom-answer");
-const customAnswerLabel = document.getElementById("custom-answer-label");
-const stepIndex = document.getElementById("step-index");
-const progressFill = document.getElementById("progress-fill");
-const summaryBox = document.getElementById("summary-box");
-const summaryList = document.getElementById("summary-list");
-const recommendationText = document.getElementById("recommendation-text");
-const restartButton = document.getElementById("restart-button");
+const leadForm = document.getElementById("lead-form");
+const leadStatus = document.getElementById("lead-status");
+const leadStatusTitle = document.getElementById("lead-status-title");
+const leadStatusMessage = document.getElementById("lead-status-message");
+const leadSubmitButton = document.getElementById("lead-submit");
 const chatWidget = document.querySelector(".chat-widget");
 const chatToggle = document.getElementById("isa-chat-btn");
 const chatPanel = document.getElementById("isa-chat-panel");
 const chatClose = document.getElementById("isa-chat-close");
 
-let currentStep = 0;
-const answers = [];
+function getConsultationPayload(form) {
+  const formData = new FormData(form);
 
-function renderStep() {
-  const step = steps[currentStep];
-  const progress = ((currentStep + 1) / steps.length) * 100;
-
-  stepIndex.textContent = String(currentStep + 1);
-  progressFill.style.width = `${progress}%`;
-  questionTitle.textContent = step.title;
-  questionHelp.textContent = step.help;
-  customAnswerLabel.textContent = step.inputLabel;
-  customAnswerInput.placeholder = step.placeholder;
-  customAnswerInput.value = "";
-
-  optionsGrid.innerHTML = "";
-
-  if (step.options) {
-    step.options.forEach((option) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "option-button";
-      button.textContent = option;
-      button.addEventListener("click", () => {
-        saveAnswer(option);
-      });
-      optionsGrid.appendChild(button);
-    });
-  }
-
-  summaryBox.hidden = true;
-  optionsGrid.hidden = false;
-  customAnswerForm.hidden = false;
+  return {
+    fechaConsulta: new Date().toISOString(),
+    nombre: String(formData.get("nombre") || "").trim(),
+    telefono: String(formData.get("telefono") || "").trim(),
+    email: String(formData.get("email") || "").trim(),
+    tipoProyecto: String(formData.get("tipoProyecto") || "").trim(),
+    ubicacion: String(formData.get("ubicacion") || "").trim(),
+    extension: String(formData.get("extension") || "").trim(),
+    plazoFechas: String(formData.get("plazoFechas") || "").trim(),
+    documentacion: String(formData.get("documentacion") || "").trim(),
+    observaciones: String(formData.get("observaciones") || "").trim()
+  };
 }
 
-function saveAnswer(value) {
-  answers[currentStep] = value.trim();
+function buildLeadParams(payload) {
+  const params = new URLSearchParams();
 
-  if (currentStep < steps.length - 1) {
-    currentStep += 1;
-    renderStep();
-    customAnswerInput.focus();
-  } else {
-    renderSummary();
-  }
-}
-
-function renderSummary() {
-  summaryList.innerHTML = "";
-
-  steps.forEach((step, index) => {
-    const item = document.createElement("li");
-    item.textContent = `${step.summaryLabel}: ${answers[index] || "Pendiente"}`;
-    summaryList.appendChild(item);
+  Object.entries(payload).forEach(([key, value]) => {
+    params.append(key, value);
   });
 
-  recommendationText.textContent = buildRecommendation();
-  progressFill.style.width = "100%";
-  optionsGrid.hidden = true;
-  customAnswerForm.hidden = true;
-  summaryBox.hidden = false;
-  questionTitle.textContent = "Consulta registrada";
-  questionHelp.textContent =
-    "Con estos datos ya es posible orientar la tecnica recomendada y preparar una propuesta tecnica inicial.";
-  stepIndex.textContent = String(steps.length);
+  return params;
 }
 
-function buildRecommendation() {
-  const project = (answers[0] || "").toLowerCase();
-  const detail = answers[3] || "el nivel de detalle indicado";
-
-  if (project.includes("drone") || project.includes("fotogrametr")) {
-    return `Para este caso, la fotogrametria con drones puede ser adecuada si buscas cobertura rapida y modelos de elevacion sobre superficies amplias. La recomendacion preliminar se basaria en ${detail}.`;
-  }
-
-  if (project.includes("laser") || project.includes("3d")) {
-    return `Por la naturaleza del proyecto, el escaneo laser 3D puede aportar mayor densidad de informacion y un registro detallado del entorno. La documentacion solicitada seria ${detail}.`;
-  }
-
-  if (project.includes("obra")) {
-    return `En proyectos de obra civil suele ser clave combinar levantamiento topografico clasico con productos digitales precisos para replanteo y control. Como referencia preliminar, se tendra en cuenta ${detail}.`;
-  }
-
-  if (project.includes("catastro")) {
-    return `Para actuaciones catastrales conviene partir de una definicion precisa de la parcela y de sus elementos fisicos, sin entrar en valoraciones legales sobre linderos. El alcance tecnico indicado es ${detail}.`;
-  }
-
-  return `Con la informacion aportada, el siguiente paso seria validar accesos, condiciones de captura y entregables tecnicos. Como base preliminar, se trabajaria con ${detail}.`;
-}
-
-customAnswerForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  if (!customAnswerInput.value.trim()) {
-    customAnswerInput.focus();
+function setLeadStatus(title, message) {
+  if (!leadStatus || !leadStatusTitle || !leadStatusMessage) {
     return;
   }
 
-  saveAnswer(customAnswerInput.value);
-});
+  leadStatusTitle.textContent = title;
+  leadStatusMessage.textContent = message;
+  leadStatus.hidden = false;
+}
 
-restartButton.addEventListener("click", () => {
-  currentStep = 0;
-  answers.length = 0;
-  renderStep();
-});
+async function submitLead(event) {
+  event.preventDefault();
+
+  if (!leadForm) {
+    return;
+  }
+
+  if (!leadForm.reportValidity()) {
+    return;
+  }
+
+  const payload = getConsultationPayload(leadForm);
+
+  if (!GOOGLE_SHEETS_ENDPOINT) {
+    setLeadStatus(
+      "Formulario listo para conectar",
+      "Los datos se han validado en la web, pero falta configurar la URL del Google Apps Script en script.js para enviarlos automaticamente a Google Sheets."
+    );
+    return;
+  }
+
+  const originalLabel = leadSubmitButton ? leadSubmitButton.textContent : "";
+
+  try {
+    if (leadSubmitButton) {
+      leadSubmitButton.disabled = true;
+      leadSubmitButton.textContent = "Enviando...";
+    }
+
+    const params = buildLeadParams(payload);
+
+    await fetch(GOOGLE_SHEETS_ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+      },
+      body: params.toString()
+    });
+
+    leadForm.reset();
+    setLeadStatus(
+      "Consulta enviada correctamente",
+      "La oportunidad se ha enviado al registro de oficina. Si el endpoint de Google Apps Script esta bien configurado, la consulta quedara almacenada en Google Sheets con todos los datos principales."
+    );
+  } catch (error) {
+    setLeadStatus(
+      "No se pudo enviar la consulta",
+      "La web ha recogido los datos, pero el envio al almacenamiento externo ha fallado. Revisa la URL del endpoint y la configuracion de Google Apps Script."
+    );
+  } finally {
+    if (leadSubmitButton) {
+      leadSubmitButton.disabled = false;
+      leadSubmitButton.textContent = originalLabel || "Enviar consulta";
+    }
+  }
+}
+
+if (leadForm) {
+  leadForm.addEventListener("submit", submitLead);
+}
 
 function setChatOpenState(isOpen) {
   if (!chatWidget || !chatToggle || !chatPanel) {
@@ -189,5 +137,3 @@ document.addEventListener("keydown", (event) => {
     setChatOpenState(false);
   }
 });
-
-renderStep();
