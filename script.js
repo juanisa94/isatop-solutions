@@ -1,4 +1,5 @@
-const GOOGLE_SHEETS_ENDPOINT = "";
+const GOOGLE_SHEETS_ENDPOINT =
+  "https://script.google.com/macros/s/AKfycbxtDVOXxcqIyeg9x2rQQLrzDghTJxllG5oxuIXvllbj6fWjzbofF9bT3PiiPVUxJF_S2w/exec";
 
 const leadForm = document.getElementById("lead-form");
 const leadStatus = document.getElementById("lead-status");
