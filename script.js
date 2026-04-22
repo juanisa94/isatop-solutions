@@ -1,5 +1,9 @@
-const GOOGLE_SHEETS_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbxtDVOXxcqIyeg9x2rQQLrzDghTJxllG5oxuIXvllbj6fWjzbofF9bT3PiiPVUxJF_S2w/exec";
+const runtimeConfig = window.ISA_CONFIG || {};
+const GOOGLE_SHEETS_ENDPOINT = runtimeConfig.googleSheetsEndpoint || "";
+const CHAT_API_URL = runtimeConfig.chatApiUrl || "";
+const LEAD_API_URL = CHAT_API_URL
+  ? CHAT_API_URL.replace(/\/chat$/, "/lead")
+  : "";
 
 const leadForm = document.getElementById("lead-form");
 const leadStatus = document.getElementById("lead-status");
@@ -17,65 +21,41 @@ const chatForm = document.getElementById("isa-chat-form");
 const chatInput = document.getElementById("isa-chat-input");
 const chatSend = document.getElementById("isa-chat-send");
 
-const chatSteps = [
-  {
-    key: "nombre",
-    label: "Nombre del cliente",
-    question: "Perfecto. Para poder dirigirme a ti correctamente, cual es tu nombre completo?",
-    placeholder: "Nombre y apellidos"
-  },
-  {
-    key: "telefono",
-    label: "Telefono",
-    question: "Gracias. Cual es tu telefono de contacto por si necesitamos aclarar algun detalle tecnico?",
-    placeholder: "+34 600 000 000"
-  },
-  {
-    key: "email",
-    label: "Email",
-    question: "Y que email prefieres para enviarte la informacion y la propuesta tecnica cuando proceda?",
-    placeholder: "cliente@correo.com"
-  },
-  {
-    key: "tipoProyecto",
-    label: "Tipo de proyecto",
-    question: "Ahora cuentame el tipo de proyecto: catastro, obra civil, levantamiento, dron, escaneo 3D u otro parecido.",
-    placeholder: "Ejemplo: Catastro"
-  },
-  {
-    key: "ubicacion",
-    label: "Ubicacion",
-    question: "Donde esta la finca, parcela o zona de actuacion? Puedes indicar municipio, direccion, poligono, parcela o coordenadas.",
-    placeholder: "Ubicacion del trabajo"
-  },
-  {
-    key: "extension",
-    label: "Extension",
-    question: "Que extension aproximada tiene la zona de trabajo? Me sirve en hectareas o metros cuadrados.",
-    placeholder: "Ejemplo: 2,5 ha"
-  },
-  {
-    key: "plazoFechas",
-    label: "Plazo y fechas",
-    question: "Que plazo manejas o para que fecha te interesa tener el trabajo avanzado?",
-    placeholder: "Ejemplo: antes del 30 de abril"
-  },
-  {
-    key: "documentacion",
-    label: "Documentacion disponible",
-    question: "Tienes alguna documentacion de las tierras o del proyecto, como referencia catastral, escrituras, planos o mediciones previas?",
-    placeholder: "Documentacion disponible"
-  },
-  {
-    key: "observaciones",
-    label: "Observaciones del cliente",
-    question: "Hay algun detalle adicional que quieras dejar indicado, como accesos, urgencia, dudas o necesidades especiales?",
-    placeholder: "Observaciones adicionales"
-  }
+const leadFieldOrder = [
+  { key: "nombre", label: "Nombre del cliente" },
+  { key: "telefono", label: "Telefono" },
+  { key: "email", label: "Email" },
+  { key: "tipoProyecto", label: "Tipo de proyecto" },
+  { key: "ubicacion", label: "Ubicacion" },
+  { key: "extension", label: "Extension" },
+  { key: "plazoFechas", label: "Plazo y fechas" },
+  { key: "documentacion", label: "Documentacion disponible" },
+  { key: "observaciones", label: "Observaciones del cliente" }
 ];
 
-let currentChatStep = 0;
-const chatAnswers = {};
+const chatState = {
+  messages: [
+    {
+      role: "assistant",
+      content:
+        "Hola, soy Isa. Estoy aqui para entender tu proyecto, orientarte con criterio tecnico y dejar la consulta registrada para revision en oficina. Empezamos por lo basico: cual es tu nombre?"
+    }
+  ],
+  lead: {
+    nombre: "",
+    telefono: "",
+    email: "",
+    tipoProyecto: "",
+    ubicacion: "",
+    extension: "",
+    plazoFechas: "",
+    documentacion: "",
+    observaciones: ""
+  },
+  missingFields: ["nombre", "telefono", "email", "tipoProyecto", "ubicacion", "extension"],
+  readyToSave: false,
+  leadSaved: false
+};
 
 function getConsultationPayload(form) {
   const formData = new FormData(form);
@@ -126,13 +106,13 @@ function updateChatSummary() {
 
   chatSummaryList.innerHTML = "";
 
-  chatSteps.forEach((step) => {
-    if (!chatAnswers[step.key]) {
+  leadFieldOrder.forEach((field) => {
+    if (!chatState.lead[field.key]) {
       return;
     }
 
     const item = document.createElement("li");
-    item.textContent = `${step.label}: ${chatAnswers[step.key]}`;
+    item.textContent = `${field.label}: ${chatState.lead[field.key]}`;
     chatSummaryList.appendChild(item);
   });
 
@@ -144,34 +124,119 @@ function updateChatPlaceholder() {
     return;
   }
 
-  const step = chatSteps[currentChatStep];
-  chatInput.placeholder = step ? step.placeholder : "Escribe tu respuesta";
+  chatInput.placeholder = "Escribe tu respuesta";
 }
 
-function buildChatPayload() {
-  return {
-    fechaConsulta: new Date().toISOString(),
-    nombre: chatAnswers.nombre || "",
-    telefono: chatAnswers.telefono || "",
-    email: chatAnswers.email || "",
-    tipoProyecto: chatAnswers.tipoProyecto || "",
-    ubicacion: chatAnswers.ubicacion || "",
-    extension: chatAnswers.extension || "",
-    plazoFechas: chatAnswers.plazoFechas || "",
-    documentacion: chatAnswers.documentacion || "",
-    observaciones: chatAnswers.observaciones || ""
-  };
+function syncLead(nextLead) {
+  leadFieldOrder.forEach((field) => {
+    const value = String(nextLead?.[field.key] || "").trim();
+    if (value) {
+      chatState.lead[field.key] = value;
+    }
+  });
 }
 
-async function sendChatLead() {
-  const payload = buildChatPayload();
+async function requestChatReply() {
+  if (!CHAT_API_URL) {
+    const fallbackReply = chatState.lead.nombre
+      ? `Gracias, ${chatState.lead.nombre}. Ya puedo seguir ayudandote, pero el motor de IA aun no esta conectado.`
+      : "Puedo orientarte, pero el motor de IA aun no esta conectado.";
+
+    return {
+      reply: fallbackReply,
+      lead: chatState.lead,
+      missingFields: [],
+      readyToSave: false,
+      fallback: true
+    };
+  }
+
+  const response = await fetch(CHAT_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      messages: chatState.messages,
+      lead: chatState.lead
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Chat API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function saveChatLead() {
+  if (chatState.leadSaved) {
+    return true;
+  }
+
+  if (LEAD_API_URL) {
+    const response = await fetch(LEAD_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        lead: {
+          fechaConsulta: new Date().toISOString(),
+          ...chatState.lead
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Lead API error: ${response.status}`);
+    }
+
+    chatState.leadSaved = true;
+    return true;
+  }
 
   if (!GOOGLE_SHEETS_ENDPOINT) {
-    appendChatMessage(
-      "agent",
-      "Ya tengo todos los datos, pero el sistema de registro aun no esta conectado al almacenamiento externo."
-    );
-    return;
+    return false;
+  }
+
+  const params = buildLeadParams({
+    fechaConsulta: new Date().toISOString(),
+    ...chatState.lead
+  });
+
+  await fetch(GOOGLE_SHEETS_ENDPOINT, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+    },
+    body: params.toString()
+  });
+
+  chatState.leadSaved = true;
+  return true;
+}
+
+async function submitLeadPayload(payload) {
+  if (LEAD_API_URL) {
+    const response = await fetch(LEAD_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ lead: payload })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Lead API error: ${response.status}`);
+    }
+
+    return true;
+  }
+
+  if (!GOOGLE_SHEETS_ENDPOINT) {
+    return false;
   }
 
   const params = buildLeadParams(payload);
@@ -184,6 +249,8 @@ async function sendChatLead() {
     },
     body: params.toString()
   });
+
+  return true;
 }
 
 async function handleChatSubmit(event) {
@@ -200,45 +267,47 @@ async function handleChatSubmit(event) {
     return;
   }
 
-  const step = chatSteps[currentChatStep];
-
-  if (!step) {
-    return;
-  }
-
-  chatAnswers[step.key] = value;
   appendChatMessage("user", value);
+  chatState.messages.push({
+    role: "user",
+    content: value
+  });
   chatInput.value = "";
-  updateChatSummary();
-
-  currentChatStep += 1;
-
-  if (currentChatStep < chatSteps.length) {
-    appendChatMessage("agent", chatSteps[currentChatStep].question);
-    updateChatPlaceholder();
-    chatInput.focus();
-    return;
-  }
 
   if (chatSend) {
     chatSend.disabled = true;
-    chatSend.textContent = "Guardando...";
+    chatSend.textContent = "Pensando...";
   }
 
   try {
-    appendChatMessage(
-      "agent",
-      "Perfecto. Ya tengo una vision clara de tu necesidad. Voy a dejar esta consulta registrada para que podamos revisarla con detalle en oficina."
-    );
-    await sendChatLead();
-    appendChatMessage(
-      "agent",
-      "Consulta registrada correctamente. En el siguiente paso podremos contactar contigo con una orientacion tecnica mas precisa, sin improvisar precios ni valoraciones legales."
-    );
+    const reply = await requestChatReply();
+
+    syncLead(reply.lead);
+    chatState.missingFields = Array.isArray(reply.missingFields) ? reply.missingFields : [];
+    chatState.readyToSave = Boolean(reply.readyToSave);
+    chatState.messages.push({
+      role: "assistant",
+      content: reply.reply
+    });
+    appendChatMessage("agent", reply.reply);
+    updateChatSummary();
+
+    if (chatState.readyToSave && !chatState.leadSaved) {
+      await saveChatLead();
+      appendChatMessage(
+        "agent",
+        "Perfecto. He dejado la consulta registrada para revision tecnica en oficina. En el siguiente paso podremos contactar contigo con una orientacion mucho mas precisa."
+      );
+      chatState.messages.push({
+        role: "assistant",
+        content:
+          "Perfecto. He dejado la consulta registrada para revision tecnica en oficina. En el siguiente paso podremos contactar contigo con una orientacion mucho mas precisa."
+      });
+    }
   } catch (error) {
     appendChatMessage(
       "agent",
-      "He recogido los datos, pero ha fallado el registro automatico. Aun asi, ya tenemos la conversacion estructurada para revisarla manualmente."
+      "He podido seguir la conversacion, pero ahora mismo hay un problema tecnico con el asistente. Si quieres, puedes completar el formulario de esta misma pagina y quedara registrado igualmente."
     );
   } finally {
     updateChatPlaceholder();
@@ -273,10 +342,10 @@ async function submitLead(event) {
 
   const payload = getConsultationPayload(leadForm);
 
-  if (!GOOGLE_SHEETS_ENDPOINT) {
+  if (!LEAD_API_URL && !GOOGLE_SHEETS_ENDPOINT) {
     setLeadStatus(
       "Formulario listo para conectar",
-      "Los datos se han validado en la web, pero falta configurar la URL del Google Apps Script en script.js para enviarlos automaticamente a Google Sheets."
+      "Los datos se han validado en la web, pero falta configurar la URL del backend de IA o del Google Apps Script en config.js para enviarlos automaticamente a Google Sheets."
     );
     return;
   }
@@ -289,16 +358,7 @@ async function submitLead(event) {
       leadSubmitButton.textContent = "Enviando...";
     }
 
-    const params = buildLeadParams(payload);
-
-    await fetch(GOOGLE_SHEETS_ENDPOINT, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-      },
-      body: params.toString()
-    });
+    await submitLeadPayload(payload);
 
     leadForm.reset();
     setLeadStatus(
