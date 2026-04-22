@@ -135,11 +135,19 @@ function inferProjectType(text) {
   return hint ? hint.value : "";
 }
 
+function cleanCapturedValue(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/[.,;:]+$/g, "")
+    .trim();
+}
+
 function inferLocation(text) {
-  return (
-    extractField(/\b(?:en|ubicad[oa] en|zona de|finca en|parcela en)\s+([A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ,\- ]{4,})/i, text) ||
-    ""
+  const match = String(text || "").match(
+    /\b(?:en|ubicad[oa] en|zona de|finca en|parcela en)\s+([A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ,\- ]{3,60}?)(?=\s+(?:para|con|de\s+\d|del?\s+[\d.,]+\s?(?:ha|m2|metros cuadrados)|mi telefono|mi teléfono|mi email|y mi|antes de|urgente|lo necesito)|[.,;]|$)/i
   );
+
+  return match?.[1] ? cleanCapturedValue(match[1]) : "";
 }
 
 function inferExtension(text) {
@@ -174,6 +182,24 @@ function inferObservations(text, lead) {
   return text.length > 160 ? text.slice(0, 160) : text;
 }
 
+function inferTimeline(text) {
+  const match = String(text || "").match(
+    /\b(?:antes de|para el|para la fecha|para|fecha objetivo|plazo|urgente|urgencia)\s+([A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ,\/\- ]{3,50}?)(?=[.;]|$)/i
+  );
+
+  if (!match?.[1]) {
+    return "";
+  }
+
+  const value = cleanCapturedValue(match[1]);
+
+  if (/\b(?:ha|hectareas|hectáreas|m2|metros cuadrados)\b/i.test(value)) {
+    return "";
+  }
+
+  return value;
+}
+
 function inferLeadFromMessages(messages, previousLead) {
   const userText = messages
     .filter((message) => String(message?.role || "") === "user")
@@ -188,7 +214,7 @@ function inferLeadFromMessages(messages, previousLead) {
     tipoProyecto: inferProjectType(userText),
     ubicacion: inferLocation(userText),
     extension: inferExtension(userText),
-    plazoFechas: extractField(/\b(?:para|antes de|plazo|fecha)\s+([A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ,\/\- ]{4,})/i, userText),
+    plazoFechas: inferTimeline(userText),
     documentacion: extractField(/\b(?:tengo|dispongo de|cuento con)\s+([A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ,\/\- ]{6,})/i, userText),
     observaciones: inferObservations(userText, previousLead)
   };
